@@ -1,0 +1,3 @@
+# Example files - not meant to be compiled
+src/auth/examples/*.example.ts
+

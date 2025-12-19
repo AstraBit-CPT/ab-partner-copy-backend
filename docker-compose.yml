@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  copy-partner-proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: copy-partner-proxy
+    ports:
+      - "8810:8810"
+    environment:
+      - NODE_ENV=development
+      - APP_ENV=development
+      - LOG_LEVEL=debug
+      - APP_LISTEN_HOST=0.0.0.0
+      - APP_LISTEN_PORT=8810
+      - CORS_ALLOW_ORIGIN=(.*)
+      - COPY_GATEWAY_URL=http://copy-gateway:3360
+      - ASTRABIT_API_KEY=${ASTRABIT_API_KEY}
+      - ASTRABIT_API_SECRET=${ASTRABIT_API_SECRET}
+      - API_SUPPORTED_VERSIONS=v1
+      - API_DEFAULT_VERSION=v1
+      - API_GATEWAY_VERSION_MAP={"v1":"v1"}
+    networks:
+      - copy-trading-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8810/health-check"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    depends_on:
+      - copy-gateway
+
+  # Mock copy-gateway for local development
+  copy-gateway:
+    image: mockserver/mockserver:latest
+    container_name: copy-gateway-mock
+    ports:
+      - "3360:1080"
+    environment:
+      - MOCKSERVER_INITIALIZATION_JSON_PATH=/config/mockserver-init.json
+    volumes:
+      - ./test/mockserver-init.json:/config/mockserver-init.json:ro
+    networks:
+      - copy-trading-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:1080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  copy-trading-network:
+    driver: bridge
+
